@@ -1,5 +1,11 @@
 name: CI stale run janitor
 
+# Reports two kinds of run that cannot produce a useful verdict: runs stranded
+# by a closed pull request, and in-progress CI runs whose required `ci-status`
+# check is already decided against them while sibling macOS jobs still hold
+# macOS concurrency.  Scheduled executions only report; cancellation and
+# deletion require an explicit workflow_dispatch with `cleanup` set.
+
 on:
   schedule:
     - cron: "*/30 * * * *"
@@ -19,6 +25,11 @@ on:
         description: "Maximum runs to process"
         required: true
         default: "25"
+        type: string
+      doomed_grace_minutes:
+        description: "Wait this long after a run's verdict is decided before cancelling it"
+        required: true
+        default: "10"
         type: string
 
 permissions:
@@ -49,4 +60,5 @@ jobs:
           CLEANUP: ${{ inputs.cleanup || 'false' }}
           MIN_AGE_MINUTES: ${{ inputs.min_age_minutes || '1440' }}
           MAX_ACTIONS: ${{ inputs.max_actions || '25' }}
+          DOOMED_GRACE_MINUTES: ${{ inputs.doomed_grace_minutes || '10' }}
         run: python3 scripts/ci/cleanup-stale-runs.py
